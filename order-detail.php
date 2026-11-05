@@ -28,60 +28,78 @@ $items = $stmt->fetchAll();
 $pageTitle = 'Đơn hàng #' . $order['id'];
 require __DIR__ . '/includes/header.php';
 ?>
-<h2>Đơn hàng #<?= $order['id'] ?></h2>
+<?php $ordersPath = is_admin() ? 'admin/orders.php' : 'orders.php'; ?>
+<section class="order-detail-page">
+    <a class="product-close orders-close" href="<?= url($ordersPath) ?>" aria-label="Đóng và quay lại danh sách đơn hàng" title="Quay lại đơn hàng">×</a>
 
-<table>
-    <tbody>
-        <tr>
-            <th>Ngày đặt</th>
-            <td><?= date('d/m/Y H:i', strtotime($order['created_at'])) ?></td>
-        </tr>
-        <tr>
-            <th>Trạng thái</th>
-            <td><?= e(order_status_label($order['status'])) ?></td>
-        </tr>
-        <tr>
-            <th>Người nhận</th>
-            <td><?= e($order['fullname']) ?> - <?= e($order['phone']) ?></td>
-        </tr>
-        <tr>
-            <th>Địa chỉ</th>
-            <td><?= e($order['address']) ?></td>
-        </tr>
-        <tr>
-            <th>Ghi chú</th>
-            <td><?= nl2br(e($order['note'])) ?></td>
-        </tr>
-    </tbody>
-</table>
+    <header class="orders-heading">
+        <p class="orders-eyebrow">CHI TIẾT GIAO DỊCH</p>
+        <h2>Đơn hàng <span class="order-code">DH-<?= str_pad((string) $order['id'], 4, '0', STR_PAD_LEFT) ?></span></h2>
+        <p>Đặt lúc <?= date('d/m/Y · H:i', strtotime($order['created_at'])) ?></p>
+    </header>
 
-<h3>Sản phẩm</h3>
-<table>
-    <thead>
-        <tr>
-            <th>Sản phẩm</th>
-            <th>Đơn giá</th>
-            <th>Số lượng</th>
-            <th>Thành tiền</th>
-        </tr>
-    </thead>
-    <tbody>
-        <?php foreach ($items as $item): ?>
-            <tr>
-                <td><?= e($item['product_name']) ?></td>
-                <td><?= format_price($item['price']) ?></td>
-                <td><?= $item['quantity'] ?></td>
-                <td><?= format_price($item['price'] * $item['quantity']) ?></td>
-            </tr>
-        <?php endforeach; ?>
-    </tbody>
-    <tfoot>
-        <tr>
-            <th colspan="3">Tổng cộng</th>
-            <th><?= format_price($order['total']) ?></th>
-        </tr>
-    </tfoot>
-</table>
+    <div class="order-summary-grid">
+        <section class="order-info-card">
+            <h3>Thông tin nhận hàng</h3>
+            <dl class="order-info-list">
+                <div>
+                    <dt>Người nhận</dt>
+                    <dd><?= e($order['fullname']) ?></dd>
+                </div>
+                <div>
+                    <dt>Số điện thoại</dt>
+                    <dd><?= e($order['phone']) ?></dd>
+                </div>
+                <div>
+                    <dt>Địa chỉ</dt>
+                    <dd><?= e($order['address']) ?></dd>
+                </div>
+                <div>
+                    <dt>Ghi chú</dt>
+                    <dd><?= $order['note'] !== '' ? nl2br(e($order['note'])) : 'Không có ghi chú' ?></dd>
+                </div>
+            </dl>
+        </section>
 
-<p><a href="<?= url(is_admin() ? 'admin/orders.php' : 'orders.php') ?>">&laquo; Danh sách đơn hàng</a></p>
+        <section class="order-info-card order-status-card">
+            <h3>Trạng thái đơn hàng</h3>
+            <span class="order-status status-<?= e($order['status']) ?>"><?= e(order_status_label($order['status'])) ?></span>
+            <p>Trạng thái sẽ được cập nhật khi đơn hàng được xử lý.</p>
+        </section>
+    </div>
+
+    <section class="order-items-section">
+        <h3>Sản phẩm trong đơn</h3>
+        <div class="orders-table-wrap">
+            <table class="orders-table order-items-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Sản phẩm</th>
+                        <th scope="col">Đơn giá</th>
+                        <th scope="col">Số lượng</th>
+                        <th scope="col">Thành tiền</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($items as $item): ?>
+                        <tr>
+                            <td class="order-item-name"><?= e($item['product_name']) ?></td>
+                            <td><?= format_price($item['price']) ?></td>
+                            <td><?= $item['quantity'] ?></td>
+                            <td class="order-total"><?= format_price($item['price'] * $item['quantity']) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="3" scope="row">Tổng thanh toán</th>
+                        <th class="order-total"><?= format_price($order['total']) ?></th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </section>
+
+    <a class="order-back-link" href="<?= url($ordersPath) ?>">← Danh sách đơn hàng</a>
+</section>
 <?php require __DIR__ . '/includes/footer.php'; ?>

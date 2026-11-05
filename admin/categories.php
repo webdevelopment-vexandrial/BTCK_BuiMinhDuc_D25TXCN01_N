@@ -112,8 +112,8 @@ $categories = $pdo->query(
 $pageTitle = 'Quản lý danh mục';
 require __DIR__ . '/../includes/header.php';
 ?>
+<section class="admin-page">
 <h2>Quản lý danh mục</h2>
-
 <p class="cart-actions">
     <a href="<?= url('admin/index.php') ?>" class="btn">Tổng quan quản trị</a>
     <a href="<?= url('admin/product.php') ?>" class="btn">Quản lý sản phẩm</a>
@@ -123,7 +123,7 @@ require __DIR__ . '/../includes/header.php';
 <?php if (isset($errors['category'])): ?>
     <p class="alert alert-error"><?= e($errors['category']) ?></p>
 <?php endif; ?>
-<form action="<?= url('admin/categories.php') ?>" method="post" class="form">
+<form action="<?= url('admin/categories.php') ?>" method="post" class="form admin-form">
     <?= csrf_field() ?>
     <input type="hidden" name="action" value="save">
     <input type="hidden" name="category_id" value="<?= (int) $formCategory['id'] ?>">
@@ -145,7 +145,8 @@ require __DIR__ . '/../includes/header.php';
 <?php if (!$categories): ?>
     <p>Chưa có danh mục nào.</p>
 <?php else: ?>
-    <table>
+    <div class="admin-table-wrap">
+    <table class="admin-table">
         <thead>
             <tr>
                 <th>Mã</th>
@@ -177,5 +178,7 @@ require __DIR__ . '/../includes/header.php';
             <?php endforeach; ?>
         </tbody>
     </table>
+    </div>
 <?php endif; ?>
+</section>
 <?php require __DIR__ . '/../includes/footer.php'; ?>

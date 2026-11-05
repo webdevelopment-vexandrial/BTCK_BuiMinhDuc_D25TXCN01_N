@@ -44,3 +44,26 @@ if (registerForm) {
         }
     });
 }
+
+document.querySelectorAll("[data-confirm]").forEach(function (button) {
+    button.addEventListener("click", function (event) {
+        if (!window.confirm(button.dataset.confirm)) {
+            event.preventDefault();
+        }
+    });
+});
+
+const contactForm = document.querySelector(".contact-form");
+if (contactForm) {
+    const message = contactForm.querySelector("#message");
+    const messageError = message.parentElement.querySelector(".error");
+    contactForm.addEventListener("submit", function (event) {
+        if (message.value.trim().length < 10) {
+            event.preventDefault();
+            messageError.textContent = "Nội dung phải có ít nhất 10 ký tự.";
+            message.focus();
+        } else {
+            messageError.textContent = "";
+        }
+    });
+}

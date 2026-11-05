@@ -1,4 +1,6 @@
-# Thư mục này chỉ chứa ảnh: cấm chạy mọi tệp PHP
-<FilesMatch "\.(php|phtml|phar)$">
+# Thư mục này chỉ chứa ảnh: cấm truy cập trực tiếp các biến thể tệp PHP.
+Options -Indexes -ExecCGI
+RemoveHandler .php .php3 .php4 .php5 .php7 .php8 .phtml .phar .pht
+<FilesMatch "(?i)\.(php[0-9]*|phtml|phar|pht)(\.|$)">
     Require all denied
 </FilesMatch>

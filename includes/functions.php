@@ -64,8 +64,123 @@ function is_admin()
 function require_login()
 {
     if (!is_logged_in()) {
+        $requestUri = $_SERVER['REQUEST_URI'] ?? '';
+        $requestPath = parse_url($requestUri, PHP_URL_PATH);
+        $basePath = parse_url(BASE_URL, PHP_URL_PATH) ?: '/';
+        if (
+            $_SERVER['REQUEST_METHOD'] === 'GET'
+            && is_string($requestPath)
+            && str_starts_with($requestPath, $basePath)
+            && !str_starts_with(substr($requestPath, strlen($basePath)), '/')
+            && basename($requestPath) !== 'login.php'
+        ) {
+            $_SESSION['redirect_after_login'] = $requestUri;
+        }
         set_flash('error', 'Vui lòng đăng nhập để tiếp tục.');
         redirect('login.php');
+    }
+}
+
+function login_lock_seconds($pdo, $email)
+{
+    $stmt = $pdo->prepare(
+        'SELECT GREATEST(0, TIMESTAMPDIFF(SECOND, NOW(), locked_until))
+         FROM login_attempts
+         WHERE email = ? AND locked_until > NOW()'
+    );
+    $stmt->execute([$email]);
+    return (int) ($stmt->fetchColumn() ?: 0);
+}
+
+function record_login_failure($pdo, $email)
+{
+    $pdo->beginTransaction();
+    $stmt = $pdo->prepare('INSERT IGNORE INTO login_attempts (email) VALUES (?)');
+    $stmt->execute([$email]);
+
+    $stmt = $pdo->prepare(
+        'SELECT failed_attempts,
+                locked_until,
+                (locked_until IS NOT NULL AND locked_until > NOW()) AS is_locked,
+                GREATEST(0, TIMESTAMPDIFF(SECOND, NOW(), locked_until)) AS seconds_remaining
+         FROM login_attempts
+         WHERE email = ?
+         FOR UPDATE'
+    );
+    $stmt->execute([$email]);
+    $attempt = $stmt->fetch();
+
+    if ((int) $attempt['is_locked'] === 1) {
+        $pdo->commit();
+        return (int) $attempt['seconds_remaining'];
+    }
+
+    $failedAttempts = $attempt['locked_until'] !== null ? 0 : (int) $attempt['failed_attempts'];
+    $failedAttempts++;
+    $locked = $failedAttempts >= 5;
+
+    $stmt = $pdo->prepare(
+        'UPDATE login_attempts
+         SET failed_attempts = ?,
+             locked_until = IF(? = 1, DATE_ADD(NOW(), INTERVAL 5 MINUTE), NULL)
+         WHERE email = ?'
+    );
+    $stmt->execute([$failedAttempts, $locked ? 1 : 0, $email]);
+    $pdo->commit();
+
+    return $locked ? 300 : 0;
+}
+
+function clear_login_failures($pdo, $email)
+{
+    $stmt = $pdo->prepare('DELETE FROM login_attempts WHERE email = ?');
+    $stmt->execute([$email]);
+}
+
+function update_order_status($pdo, $orderId, $status, $userId = null)
+{
+    $pdo->beginTransaction();
+    try {
+        $stmt = $pdo->prepare('SELECT user_id, status FROM orders WHERE id = ? FOR UPDATE');
+        $stmt->execute([$orderId]);
+        $order = $stmt->fetch();
+        if (!$order) {
+            throw new RuntimeException('Đơn hàng không tồn tại.');
+        }
+        if ($userId !== null && (int) $order['user_id'] !== (int) $userId) {
+            throw new RuntimeException('Không tìm thấy đơn hàng.');
+        }
+        if ($userId !== null && ($order['status'] !== 'pending' || $status !== 'cancelled')) {
+            throw new RuntimeException('Chỉ có thể hủy đơn hàng đang chờ xử lý.');
+        }
+        if ($order['status'] === 'cancelled' && $status !== 'cancelled') {
+            throw new RuntimeException('Đơn hàng đã hủy không thể khôi phục trạng thái.');
+        }
+
+        if ($status === 'cancelled' && $order['status'] !== 'cancelled') {
+            $stmt = $pdo->prepare(
+                'SELECT product_id, SUM(quantity) AS quantity
+                 FROM order_items
+                 WHERE order_id = ?
+                 GROUP BY product_id
+                 ORDER BY product_id'
+            );
+            $stmt->execute([$orderId]);
+            $items = $stmt->fetchAll();
+            $restoreStock = $pdo->prepare('UPDATE products SET stock = stock + ? WHERE id = ?');
+            foreach ($items as $item) {
+                $restoreStock->execute([(int) $item['quantity'], (int) $item['product_id']]);
+            }
+        }
+
+        $stmt = $pdo->prepare('UPDATE orders SET status = ? WHERE id = ?');
+        $stmt->execute([$status, $orderId]);
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
     }
 }
 
@@ -135,17 +250,29 @@ function require_admin()
 // Trả về đường dẫn ảnh đã lưu (ví dụ "upload/3f2a....jpg"); ném ngoại lệ nếu tệp không hợp lệ
 function upload_image($file)
 {
+    if (!is_array($file) || !isset($file['error'], $file['tmp_name']) || !is_int($file['error'])) {
+        throw new RuntimeException('Thông tin tệp tải lên không hợp lệ.');
+    }
     if ($file['error'] !== UPLOAD_ERR_OK) {
         throw new RuntimeException('Tải tệp lên thất bại (mã lỗi ' . $file['error'] . ').');
     }
-    if ($file['size'] > 2 * 1024 * 1024) {
+    if (!is_string($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+        throw new RuntimeException('Tệp tải lên không hợp lệ.');
+    }
+
+    $size = filesize($file['tmp_name']);
+    if ($size === false || $size === 0) {
+        throw new RuntimeException('Tệp ảnh rỗng hoặc không đọc được.');
+    }
+    if ($size > 2 * 1024 * 1024) {
         throw new RuntimeException('Ảnh không được lớn hơn 2 MB.');
     }
 
-    // Xác định loại tệp bằng cách đọc nội dung, không tin phần mở rộng do người dùng đặt
-    $info = getimagesize($file['tmp_name']);
+    // Kiểm tra cả MIME và cấu trúc ảnh; không tin tên hoặc MIME do trình duyệt gửi lên.
     $extensions = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
-    if ($info === false || !isset($extensions[$info['mime']])) {
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+    $info = getimagesize($file['tmp_name']);
+    if ($info === false || !isset($extensions[$mime]) || $info['mime'] !== $mime) {
         throw new RuntimeException('Chỉ chấp nhận ảnh JPG, PNG hoặc WebP.');
     }
 
@@ -155,6 +282,34 @@ function upload_image($file)
         throw new RuntimeException('Không lưu được tệp. Kiểm tra quyền ghi của thư mục upload.');
     }
     return 'upload/' . $name;
+}
+
+function delete_uploaded_image_if_unused($pdo, $imagePath)
+{
+    if (
+        !is_string($imagePath)
+        || !preg_match('~\Aupload/[a-f0-9]{16}\.(?:jpg|png|webp)\z~', $imagePath)
+    ) {
+        return;
+    }
+
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM products WHERE image = ?');
+    $stmt->execute([$imagePath]);
+    if ((int) $stmt->fetchColumn() > 0) {
+        return;
+    }
+
+    $uploadDirectory = realpath(__DIR__ . '/../upload');
+    $imageFile = realpath(__DIR__ . '/../' . $imagePath);
+    if (
+        $uploadDirectory !== false
+        && $imageFile !== false
+        && dirname($imageFile) === $uploadDirectory
+        && is_file($imageFile)
+        && !unlink($imageFile)
+    ) {
+        throw new RuntimeException('Đã cập nhật sản phẩm nhưng không xóa được ảnh cũ.');
+    }
 }
 
 // ===== 8. Chống giả mạo yêu cầu (CSRF) =====

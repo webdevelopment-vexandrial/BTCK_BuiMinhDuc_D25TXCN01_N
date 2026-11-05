@@ -26,6 +26,7 @@ $lowStockProducts = $stmt->fetchAll();
 $pageTitle = 'Tổng quan quản trị';
 require __DIR__ . '/../includes/header.php';
 ?>
+<section class="admin-page admin-dashboard-page">
 <h2>Tổng quan quản trị</h2>
 
 <p class="cart-actions">
@@ -48,11 +49,12 @@ require __DIR__ . '/../includes/header.php';
     </article>
 </div>
 
-<h3>5 sản phẩm có tồn kho thấp nhất</h3>
+<h3>5 sản phẩm sắp hết hàng</h3>
 <?php if (!$lowStockProducts): ?>
     <p>Chưa có sản phẩm nào.</p>
 <?php else: ?>
-    <table>
+    <div class="admin-table-wrap">
+    <table class="admin-table">
         <thead>
             <tr>
                 <th>Mã</th>
@@ -70,5 +72,7 @@ require __DIR__ . '/../includes/header.php';
             <?php endforeach; ?>
         </tbody>
     </table>
+    </div>
 <?php endif; ?>
+</section>
 <?php require __DIR__ . '/../includes/footer.php'; ?>

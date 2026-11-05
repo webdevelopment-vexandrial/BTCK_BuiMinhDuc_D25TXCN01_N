@@ -102,66 +102,104 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $pageTitle = 'Đặt hàng';
 require __DIR__ . '/includes/header.php';
 ?>
-<h2>Đặt hàng</h2>
+<section class="checkout-page">
+    <a class="product-close checkout-close" href="<?= url('cart.php') ?>" aria-label="Đóng và quay lại giỏ hàng" title="Quay lại giỏ hàng">×</a>
 
-<?php if (isset($errors['order'])): ?>
-    <p class="alert alert-error"><?= e($errors['order']) ?></p>
-<?php endif; ?>
+    <header class="checkout-heading">
+        <p class="checkout-eyebrow">HOÀN TẤT ĐƠN HÀNG</p>
+        <h2>Thanh toán</h2>
+        <p>Kiểm tra sản phẩm và nhập thông tin nhận hàng của bạn.</p>
+    </header>
 
-<h3>Đơn hàng của bạn</h3>
-<table>
-    <thead>
-        <tr>
-            <th>Sản phẩm</th>
-            <th>Đơn giá</th>
-            <th>Số lượng</th>
-            <th>Thành tiền</th>
-        </tr>
-    </thead>
-    <tbody>
-        <?php foreach ($items as $item): ?>
-            <tr>
-                <td><?= e($item['name']) ?></td>
-                <td><?= format_price($item['price']) ?></td>
-                <td><?= $item['quantity'] ?></td>
-                <td><?= format_price($item['line_total']) ?></td>
-            </tr>
-        <?php endforeach; ?>
-    </tbody>
-    <tfoot>
-        <tr>
-            <th colspan="3">Tổng cộng</th>
-            <th><?= format_price($total) ?></th>
-        </tr>
-    </tfoot>
-</table>
+    <?php if (isset($errors['order'])): ?>
+        <p class="alert alert-error checkout-error"><?= e($errors['order']) ?></p>
+    <?php endif; ?>
 
-<h3>Thông tin nhận hàng</h3>
-<form action="<?= url('checkout.php') ?>" method="post" class="form">
-    <?= csrf_field() ?>
-    <p>
-        <label for="fullname">Người nhận</label><br>
-        <input type="text" id="fullname" name="fullname" value="<?= e($fullname) ?>" required>
-        <span class="error"><?= e($errors['fullname'] ?? '') ?></span>
-    </p>
-    <p>
-        <label for="phone">Số điện thoại</label><br>
-        <input type="tel" id="phone" name="phone" value="<?= e($phone) ?>" required>
-        <span class="error"><?= e($errors['phone'] ?? '') ?></span>
-    </p>
-    <p>
-        <label for="address">Địa chỉ nhận hàng</label><br>
-        <textarea id="address" name="address" rows="3" required><?= e($address) ?></textarea>
-        <span class="error"><?= e($errors['address'] ?? '') ?></span>
-    </p>
-    <p>
-        <label for="note">Ghi chú</label><br>
-        <textarea id="note" name="note" rows="2"><?= e($note) ?></textarea>
-        <span class="error"><?= e($errors['note'] ?? '') ?></span>
-    </p>
-    <p>
-        <button type="submit" class="btn btn-accent">Xác nhận đặt hàng</button>
-        <a href="<?= url('cart.php') ?>">Quay lại giỏ hàng</a>
-    </p>
-</form>
+    <div class="checkout-layout">
+        <section class="checkout-summary">
+            <div class="checkout-section-heading">
+                <span class="checkout-step">01</span>
+                <div>
+                    <h3>Đơn hàng của bạn</h3>
+                    <p><?= count($items) ?> sản phẩm</p>
+                </div>
+            </div>
+
+            <div class="checkout-items">
+                <?php foreach ($items as $item): ?>
+                    <article class="checkout-item">
+                        <div class="checkout-item-image">
+                            <img src="<?= url($item['image']) ?>" alt="<?= e($item['name']) ?>" loading="lazy">
+                        </div>
+                        <div class="checkout-item-info">
+                            <h4><?= e($item['name']) ?></h4>
+                            <p>Số lượng: <?= $item['quantity'] ?></p>
+                        </div>
+                        <strong><?= format_price($item['line_total']) ?></strong>
+                    </article>
+                <?php endforeach; ?>
+            </div>
+
+            <div class="checkout-total">
+                <span>Tổng thanh toán</span>
+                <strong><?= format_price($total) ?></strong>
+            </div>
+            <a class="checkout-back-link" href="<?= url('cart.php') ?>">← Chỉnh sửa giỏ hàng</a>
+        </section>
+
+        <section class="checkout-form-panel">
+            <div class="checkout-section-heading">
+                <span class="checkout-step">02</span>
+                <div>
+                    <h3>Thông tin nhận hàng</h3>
+                    <p>Thông tin của bạn được dùng để giao đơn hàng.</p>
+                </div>
+            </div>
+
+            <form action="<?= url('checkout.php') ?>" method="post" class="checkout-form">
+                <?= csrf_field() ?>
+                <div class="checkout-field">
+                    <label for="fullname">Họ và tên người nhận</label>
+                    <input type="text" id="fullname" name="fullname" value="<?= e($fullname) ?>"
+                           autocomplete="name" maxlength="100" required>
+                    <?php if (isset($errors['fullname'])): ?>
+                        <span class="error"><?= e($errors['fullname']) ?></span>
+                    <?php endif; ?>
+                </div>
+
+                <div class="checkout-field">
+                    <label for="phone">Số điện thoại</label>
+                    <input type="tel" id="phone" name="phone" value="<?= e($phone) ?>"
+                           autocomplete="tel" inputmode="numeric" maxlength="10" required>
+                    <?php if (isset($errors['phone'])): ?>
+                        <span class="error"><?= e($errors['phone']) ?></span>
+                    <?php endif; ?>
+                </div>
+
+                <div class="checkout-field">
+                    <label for="address">Địa chỉ nhận hàng</label>
+                    <textarea id="address" name="address" rows="3" autocomplete="street-address"
+                              maxlength="255" required><?= e($address) ?></textarea>
+                    <?php if (isset($errors['address'])): ?>
+                        <span class="error"><?= e($errors['address']) ?></span>
+                    <?php endif; ?>
+                </div>
+
+                <div class="checkout-field">
+                    <label for="note">Ghi chú <span>(không bắt buộc)</span></label>
+                    <textarea id="note" name="note" rows="2" maxlength="500"
+                              placeholder="Ví dụ: giao hàng sau 17 giờ"><?= e($note) ?></textarea>
+                    <?php if (isset($errors['note'])): ?>
+                        <span class="error"><?= e($errors['note']) ?></span>
+                    <?php endif; ?>
+                </div>
+
+                <button type="submit" class="checkout-submit">
+                    Xác nhận đặt hàng <span aria-hidden="true">→</span>
+                </button>
+                <p class="checkout-secure-note">Vui lòng kiểm tra kỹ số điện thoại và địa chỉ trước khi xác nhận.</p>
+            </form>
+        </section>
+    </div>
+</section>
 <?php require __DIR__ . '/includes/footer.php'; ?>

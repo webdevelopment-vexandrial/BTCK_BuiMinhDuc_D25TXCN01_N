@@ -3,17 +3,29 @@ require __DIR__ . '/../includes/init.php';
 require_admin();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    redirect('admin/product.php');
+    http_response_code(405);
+    header('Allow: POST');
+    exit('Chỉ chấp nhận yêu cầu POST.');
 }
 
-$id = (int) ($_POST['id'] ?? 0);
+$id = filter_var($_POST['id'] ?? '', FILTER_VALIDATE_INT);
+if ($id === false || $id < 1) {
+    set_flash('error', 'Mã sản phẩm không hợp lệ.');
+    redirect('admin/product.php');
+}
 
 try {
     $stmt = $pdo->prepare('DELETE FROM products WHERE id = ?');
     $stmt->execute([$id]);
-    set_flash('success', 'Đã xóa sản phẩm.');
+    if ($stmt->rowCount() > 0) {
+        set_flash('success', 'Đã xóa sản phẩm.');
+    } else {
+        set_flash('error', 'Sản phẩm không tồn tại.');
+    }
 } catch (PDOException $e) {
-    // Sản phẩm đã nằm trong đơn hàng: khóa ngoại không cho xóa
+    if ($e->getCode() !== '23000') {
+        throw $e;
+    }
     set_flash('error', 'Không thể xóa: sản phẩm đã có trong đơn hàng. Hãy đặt tồn kho về 0 để ngừng bán.');
 }
 

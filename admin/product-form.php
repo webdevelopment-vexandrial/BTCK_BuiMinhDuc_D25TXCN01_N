@@ -25,6 +25,8 @@ if ($id > 0) {
 
 $categories = $pdo->query('SELECT id, name FROM categories ORDER BY id')->fetchAll();
 $errors = [];
+$oldImage = $product['image'];
+$uploadedNewImage = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $product['category_id'] = (int) ($_POST['category_id'] ?? 0);
@@ -53,6 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$errors && isset($_FILES['image']) && $_FILES['image']['error'] !== UPLOAD_ERR_NO_FILE) {
         try {
             $product['image'] = upload_image($_FILES['image']);
+            $uploadedNewImage = true;
         } catch (RuntimeException $e) {
             $errors['image'] = $e->getMessage();
         }
@@ -72,6 +75,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             );
             $values[] = $id;
             $stmt->execute($values);
+            if ($uploadedNewImage) {
+                delete_uploaded_image_if_unused($pdo, $oldImage);
+            }
             set_flash('success', 'Đã cập nhật sản phẩm.');
         } else {
             $stmt = $pdo->prepare(
@@ -91,9 +97,9 @@ $action = 'admin/product-form.php' . ($id > 0 ? '?id=' . $id : '');
 require __DIR__ . '/../includes/header.php';
 ?>
 
+<section class="admin-page admin-edit-page">
 <h2><?= $pageTitle ?></h2>
-
-<form action="<?= url($action) ?>" method="post" enctype="multipart/form-data" class="form">
+<form action="<?= url($action) ?>" method="post" enctype="multipart/form-data" class="form admin-form">
     <?= csrf_field() ?>
     <p>
         <label for="name">Tên sản phẩm</label><br>
@@ -140,9 +146,10 @@ require __DIR__ . '/../includes/header.php';
     </p>
 
     <p>
-        <button type="submit" class="btn btn-accent">Lưu</button>
+        <button type="submit" class="btn">Lưu</button>
         <a href="<?= url('admin/product.php') ?>">Hủy</a>
     </p>
 </form>
+</section>
 
 <?php require __DIR__ . '/../includes/footer.php'; ?>

@@ -23,16 +23,17 @@ $products = $stmt->fetchAll();
 $pageTitle = 'Quản lý sản phẩm';
 require __DIR__ . '/../includes/header.php';
 ?>
+<section class="admin-page">
 <h2>Quản lý sản phẩm</h2>
-
 <p class="cart-actions">
     <a href="<?= url('admin/index.php') ?>" class="btn">Tổng quan quản trị</a>
     <a href="<?= url('admin/categories.php') ?>" class="btn">Quản lý danh mục</a>
-    <a href="<?= url('admin/product-form.php') ?>" class="btn btn-accent">Thêm sản phẩm</a>
+    <a href="<?= url('admin/product-form.php') ?>" class="btn">Thêm sản phẩm</a>
     <a href="<?= url('admin/orders.php') ?>" class="btn">Quản lý đơn hàng</a>
 </p>
 
-<table>
+<div class="admin-table-wrap">
+<table class="admin-table admin-product-table">
     <thead>
         <tr>
             <th>Mã</th>
@@ -66,6 +67,7 @@ require __DIR__ . '/../includes/header.php';
         <?php endforeach; ?>
     </tbody>
 </table>
+</div>
 
 <p class="pagination">
     <?php for ($i = 1; $i <= $totalPages; $i++): ?>
@@ -73,4 +75,5 @@ require __DIR__ . '/../includes/header.php';
            class="<?= $i === $page ? 'active' : '' ?>"><?= $i ?></a>
     <?php endfor; ?>
 </p>
+</section>
 <?php require __DIR__ . '/../includes/footer.php'; ?>
