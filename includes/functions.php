@@ -139,6 +139,10 @@ function clear_login_failures($pdo, $email)
 
 function update_order_status($pdo, $orderId, $status, $userId = null)
 {
+    if (!is_string($status) || !isset(order_statuses()[$status])) {
+        throw new RuntimeException('Trạng thái đơn hàng không hợp lệ.');
+    }
+
     $pdo->beginTransaction();
     try {
         $stmt = $pdo->prepare('SELECT user_id, status FROM orders WHERE id = ? FOR UPDATE');
@@ -153,11 +157,18 @@ function update_order_status($pdo, $orderId, $status, $userId = null)
         if ($userId !== null && ($order['status'] !== 'pending' || $status !== 'cancelled')) {
             throw new RuntimeException('Chỉ có thể hủy đơn hàng đang chờ xử lý.');
         }
-        if ($order['status'] === 'cancelled' && $status !== 'cancelled') {
-            throw new RuntimeException('Đơn hàng đã hủy không thể khôi phục trạng thái.');
+
+        if ($order['status'] === $status) {
+            $pdo->commit();
+            return;
         }
 
-        if ($status === 'cancelled' && $order['status'] !== 'cancelled') {
+        $allowedTransitions = order_status_transitions()[$order['status']] ?? [];
+        if (!in_array($status, $allowedTransitions, true)) {
+            throw new RuntimeException('Không thể chuyển đơn hàng từ trạng thái hiện tại sang trạng thái đã chọn.');
+        }
+
+        if ($status === 'cancelled') {
             $stmt = $pdo->prepare(
                 'SELECT product_id, SUM(quantity) AS quantity
                  FROM order_items
@@ -228,6 +239,16 @@ function order_statuses()
     ];
 }
 
+function order_status_transitions()
+{
+    return [
+        'pending'   => ['shipping', 'cancelled'],
+        'shipping'  => ['completed'],
+        'completed' => [],
+        'cancelled' => [],
+    ];
+}
+
 function order_status_label($status)
 {
     return order_statuses()[$status] ?? $status;
@@ -241,7 +262,9 @@ function require_admin()
     require_login();
     if (!is_admin()) {
         http_response_code(403);
-        exit('Bạn không có quyền truy cập trang này.');
+        $pageTitle = '403 - Không có quyền truy cập';
+        require __DIR__ . '/forbidden.php';
+        exit;
     }
 }
 

@@ -1,6 +1,6 @@
 <?php
 
-define('APP_NAME', 'Cua hang Bui Minh Duc');
+define('APP_NAME', 'Cửa hàng Bùi Minh Đức');
 define('APP_DEBUG', true); // true: hiện lỗi chi tiết (chỉ dùng khi phát triển)
 
 $projectRoot = realpath(__DIR__ . '/..');

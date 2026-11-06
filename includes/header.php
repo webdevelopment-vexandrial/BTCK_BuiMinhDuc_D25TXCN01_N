@@ -32,27 +32,15 @@
 <body class="bg-bgDark text-white">
   <?php
     $currentPage = basename($_SERVER['SCRIPT_NAME'] ?? 'index.php');
-    $headerUser = current_user();
-    $headerEmail = strtolower(trim((string) ($headerUser['email'] ?? '')));
-    $headerAvatar = null;
-    $headerAvatarClass = 'header-logo';
-
-    if ($headerUser !== null) {
-      if ($headerEmail === 'mduc04717@gmail.com') {
-        $headerAvatar = 'images/logo-avt.jpg';
-      } elseif ($headerEmail === 'admin@gmail.com') {
-        $headerAvatar = 'images/admin-logo.svg';
-        $headerAvatarClass .= ' admin-header-logo';
-      } else {
-        $headerAvatar = 'images/logo-placeholder.svg';
-      }
-    }
   ?>
 
   <!-- Sticky transparent header -->
   <header id="site-header"
           class="fixed inset-x-0 top-0 z-50 flex items-center justify-between px-6 py-4 transition-all duration-300 backdrop-blur-md">
-    <h1 class="text-2xl font-bold text-white"><?= APP_NAME ?></h1>
+    <a class="site-brand" href="<?= url(is_admin() ? 'admin/index.php' : 'index.php') ?>">
+      <img src="<?= url('images/logo-avt.jpg') ?>" alt="Logo cửa hàng">
+      <h1 class="text-2xl font-bold text-white"><?= e(APP_NAME) ?></h1>
+    </a>
     <nav class="flex items-center gap-4 text-sm">
       <?php if (is_admin()): ?>
           <a href="<?= url('admin/index.php') ?>" class="hover:text-primary <?= $currentPage === 'index.php' && str_contains($_SERVER['SCRIPT_NAME'] ?? '', '/admin/') ? 'active' : '' ?>" <?= $currentPage === 'index.php' && str_contains($_SERVER['SCRIPT_NAME'] ?? '', '/admin/') ? 'aria-current="page"' : '' ?>>Tổng quan</a>
@@ -64,10 +52,9 @@
           <?= csrf_field() ?>
           <button type="submit"
                   class="text-sm text-white hover:text-primary transition-colors">
-            Đăng xuất
+            Đăng xuất (<?= e(current_user()['fullname']) ?>)
           </button>
         </form>
-        <img class="<?= e($headerAvatarClass) ?>" src="<?= url($headerAvatar) ?>" alt="Ảnh đại diện tài khoản">
       <?php elseif (is_logged_in()): ?>
         <a href="<?= url('index.php') ?>" class="hover:text-primary transition-colors <?= $currentPage === 'index.php' || $currentPage === 'product.php' ? 'active' : '' ?>" <?= $currentPage === 'index.php' || $currentPage === 'product.php' ? 'aria-current="page"' : '' ?>>Trang chủ</a>
         <a href="<?= url('about.php') ?>" class="hover:text-primary transition-colors <?= $currentPage === 'about.php' ? 'active' : '' ?>" <?= $currentPage === 'about.php' ? 'aria-current="page"' : '' ?>>Giới thiệu</a>
@@ -84,7 +71,6 @@
             Đăng xuất (<?= e(current_user()['fullname']) ?>)
           </button>
         </form>
-        <img class="<?= e($headerAvatarClass) ?>" src="<?= url($headerAvatar) ?>" alt="Ảnh đại diện tài khoản">
       <?php else: ?>
         <a href="<?= url('index.php') ?>" class="hover:text-primary transition-colors <?= $currentPage === 'index.php' || $currentPage === 'product.php' ? 'active' : '' ?>" <?= $currentPage === 'index.php' || $currentPage === 'product.php' ? 'aria-current="page"' : '' ?>>Trang chủ</a>
         <a href="<?= url('about.php') ?>" class="hover:text-primary transition-colors <?= $currentPage === 'about.php' ? 'active' : '' ?>" <?= $currentPage === 'about.php' ? 'aria-current="page"' : '' ?>>Giới thiệu</a>
